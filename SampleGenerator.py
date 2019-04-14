@@ -10,11 +10,11 @@ class SampleGenerator:
         self.img_size = img_size
         self.img_num = img_num
 
-    def generate_horizontal_lines(self):
+    def generate_vertical_lines(self):
         foreground = 255
         min_length_ratio = 0.7
         thickness_ratio = 0.3
-        save_dir = os.path.join(self.sample_path, 'horizontal_lines')
+        save_dir = os.path.join(self.sample_path, 'vertical_lines')
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
         for i in range(self.img_num):
@@ -29,11 +29,11 @@ class SampleGenerator:
             img_path = os.path.join(save_dir, str(i) + '.jpg')
             cv2.imwrite(img_path, img)
 
-    def generate_vertical_lines(self):
+    def generate_horizontal_lines(self):
         foreground = 255
         min_length_ratio = 0.7
         thickness_ratio = 0.3
-        save_dir = os.path.join(self.sample_path, 'vertical_lines')
+        save_dir = os.path.join(self.sample_path, 'horizontal_lines')
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
         for i in range(self.img_num):
@@ -49,9 +49,9 @@ class SampleGenerator:
             cv2.imwrite(img_path, img)
 
 if __name__ == '__main__':
-    img_path = 'E:\\Networks\\Samples'
+    img_path = 'E:\\temp\\Samples'
     img_size = (10, 10)
     img_num = 100
     sample_generator = SampleGenerator(img_path, img_size, img_num)
-    # sample_generator.generate_horizontal_lines()
+    sample_generator.generate_horizontal_lines()
     sample_generator.generate_vertical_lines()
