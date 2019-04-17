@@ -18,7 +18,7 @@ if __name__ == '__main__':
     model = Net.Net1().cuda()
 
     criterion = nn.MSELoss()
-    optimizer = optim.SGD(model.parameters(), lr=10)
+    optimizer = optim.SGD(model.parameters(), lr=0.1)
     epoch_size = 100
     for epoch in range(epoch_size):
         for ibatch, sample_batched in enumerate(line_dataloader):
