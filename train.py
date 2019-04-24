@@ -6,9 +6,11 @@ import torch.optim as optim
 import torch
 from torchvision import transforms
 from torch.autograd import Variable
+import os
 
 if __name__ == '__main__':
     dataset_file_path = 'samples_0.txt'
+    ckpt_dir = './check_point'
     composed = transforms.Compose([Normalize(),
                                    ToTensor()])
     batch_size = 32
@@ -36,4 +38,9 @@ if __name__ == '__main__':
             if ibatch % 20 == 0:
                 print('Epoch [{} / {}] Batch [{}], loss: {:.6f}'
                       .format(epoch + 1, epoch_size, ibatch, loss.item()))
-        torch.save(model, './check_point/base_model_{}.pth')
+        if (epoch + 1) % 20 == 0:
+            if not os.path.isdir(ckpt_dir):
+                os.makedirs(ckpt_dir)
+            model_path = os.path.join(ckpt_dir, 'base_model_{}.pth'.format(epoch + 1))
+            torch.save(model, model_path)
+
