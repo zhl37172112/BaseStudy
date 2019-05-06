@@ -5,6 +5,7 @@ from train import test
 from torchvision import transforms
 from torch.autograd import Variable
 import os
+from Visualization import ModelExplainer
 
 if __name__ == '__main__':
     dataset_file_path = 'samples_1.txt'
@@ -16,6 +17,11 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     model = torch.load(ckpt_path)
     model.eval()
+    model_explainer = ModelExplainer()
+    state_dict = model.state_dict()
+    for weight_name, weight_value in state_dict.items():
+        model_explainer.write_conv_weights(weight_name, weight_value.cpu().numpy(), 'conv.txt', cover=True)
+        pass
 
     for sample in test_dataset:
         img = sample['image']
