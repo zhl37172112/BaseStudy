@@ -20,7 +20,6 @@ def write_title(file, weight_name, weight_value):
     file.write(title)
 
 def write_one_line(file, weight_line, decimals_num):
-    num_format = '{:.' + str(decimals_num) + 'e}'
     if len(weight_line.shape) == 1:
         write_one_num(file, weight_line[0], decimals_num)
         for i in range(1, weight_line.shape[0]):
@@ -33,8 +32,7 @@ def write_one_line(file, weight_line, decimals_num):
             file.write(' ')
     file.write('\n')
 
-
-def write_fl_weights(file_path, weight_name, weight_value, line_width, decimals_num, cover=False):
+def write_wc_weights(file_path, weight_name, weight_value, line_width, decimals_num, cover=False):
     file = open(file_path, 'a+') if not cover else open(file_path, 'w')
     write_segment_line(file, line_width)
     write_title(file, weight_name, weight_value)
@@ -48,6 +46,25 @@ def write_fl_weights(file_path, weight_name, weight_value, line_width, decimals_
             weight_line = weight_value[i, conv_start_index:conv_end_index]
             write_one_line(file, weight_line, decimals_num)
         file.write('\n')
+
+def write_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover=False):
+    file = open(file_path, 'a+') if not cover else open(file_path, 'w')
+    write_segment_line(file, line_width)
+    write_title(file, weight_name, weight_value)
+    bias_width = weight_value.shape[0] * (decimals_num + NUM_ADD_LENGTH) + 1
+    split_num = math.ceil(bias_width / line_width)
+    bias_per_line = math.ceil(weight_value.shape[0] / split_num)
+    for j in range(split_num):
+        start_index = bias_per_line * j
+        end_index = min(bias_per_line * (j+1), weight_value.shape[0])
+        if end_index == start_index:
+            continue
+        weight_line = weight_value[start_index:end_index]
+        write_one_line(file, weight_line, decimals_num)
+    file.write('\n')
+
+def write_wc_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover=False):
+    write_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover)
 
 def write_conv_weights(file_path, weight_name, weight_value, line_width, decimals_num, cover=False):
     file = open(file_path, 'a+') if not cover else open(file_path, 'w')
@@ -69,20 +86,19 @@ def write_conv_weights(file_path, weight_name, weight_value, line_width, decimal
         file.write('\n')
 
 def write_conv_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover=False):
-    file = open(file_path, 'a+') if not cover else open(file_path, 'w')
-    write_segment_line(file, line_width)
-    write_title(file, weight_name, weight_value)
-    bias_width = weight_value.shape[0] * (decimals_num + NUM_ADD_LENGTH) + 1
-    split_num = math.ceil(bias_width / line_width)
-    bias_per_line = math.ceil(weight_value.shape[1] / split_num)
-    for j in range(split_num):
-        conv_start_index = bias_per_line * j
-        conv_end_index = min(bias_per_line * (j+1), weight_value.shape[0])
-        if conv_end_index == conv_start_index:
-            continue
-        weight_line = weight_value[conv_start_index:conv_end_index]
-        write_one_line(file, weight_line, decimals_num)
-    file.write('\n')
+    write_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover)
+
+def write_weights(file_path, weight_name, weight_value, line_width, decimals_num, cover=False):
+    if weight_name.startswith('conv'):
+        if weight_name.endswith('weight'):
+            write_conv_weights(file_path, weight_name, weight_value, line_width, decimals_num, cover)
+        elif weight_name.endswith('bias'):
+            write_conv_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover)
+    elif weight_name.startswith('wc'):
+        if weight_name.endswith('weight'):
+            write_wc_weights(file_path, weight_name, weight_value, line_width, decimals_num, cover)
+        elif weight_name.endswith('bias'):
+            write_wc_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover)
 
 
 
@@ -113,14 +129,20 @@ class ModelExplainer:
 
     def write_fl_weights(self, weight_name, weight_value, file_path=None, cover=False):
         file_path = file_path if file_path is not None else self.file_path
-        write_fl_weights(file_path,
-                           weight_name,
-                           weight_value,
-                           self.line_width,
-                           self.decimals_num,
-                           cover=cover)
+        write_wc_weights(file_path,
+                         weight_name,
+                         weight_value,
+                         self.line_width,
+                         self.decimals_num,
+                         cover=cover)
 
-    def write_weights(self, dict_state, file_path, cover=True):
+    def write_weights(self, weight_path, dict_state, cover=True):
+        if cover:
+            open(weight_path, 'w').close()
         for weight_name, weight_value in dict_state.items():
-            pass
+            write_weights(weight_path,
+                          weight_name,
+                          weight_value,
+                          self.line_width,
+                          self.decimals_num)
 

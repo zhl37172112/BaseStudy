@@ -19,6 +19,7 @@ if __name__ == '__main__':
     model.eval()
     model_explainer = ModelExplainer()
     state_dict = model.state_dict()
+    model_explainer.write_weights('conv.txt', state_dict)
     for weight_name, weight_value in state_dict.items():
         model_explainer.write_conv_weights(weight_name, weight_value.cpu().numpy(), 'conv.txt', cover=True)
         pass
