@@ -20,13 +20,21 @@ if __name__ == '__main__':
     model_explainer = ModelExplainer()
     state_dict = model.state_dict()
     model_explainer.write_weights('conv.txt', state_dict)
-    for weight_name, weight_value in state_dict.items():
-        model_explainer.write_conv_weights(weight_name, weight_value.cpu().numpy(), 'conv.txt', cover=True)
-        pass
-
+    feature_path = 'feature.txt'
     for sample in test_dataset:
         img = sample['image']
         img = torch.unsqueeze(img, 0).cuda()
+        model_explainer.write_feature_map(feature_path, 'input', img, cover=True)
+        conv1_feature = model.conv1(img)
+        model_explainer.write_feature_map(feature_path, 'conv1', conv1_feature.cpu().detach().numpy())
+        conv2_feature = model.conv2(conv1_feature)
+        model_explainer.write_feature_map(feature_path, 'conv2', conv2_feature.cpu().detach().numpy())
+        conv2_feature = conv2_feature.view(conv2_feature.size(0), -1)
+        model_explainer.write_feature_map(feature_path, 'wc1_input', conv2_feature.cpu().detach().numpy())
+        wc1_feature = model.wc1(conv2_feature)
+        model_explainer.write_feature_map(feature_path, 'wc1', wc1_feature.cpu().detach().numpy())
+        softmax_feature = model.softmax(wc1_feature)
+        model_explainer.write_feature_map(feature_path, 'softmax', softmax_feature.cpu().detach().numpy())
         label = sample['label']
         pre_label = torch.argmax(model(img), 1)
         print('label: {}, prediction: {}'.format(label.item(), pre_label.item()))

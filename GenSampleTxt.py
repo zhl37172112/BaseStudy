@@ -19,6 +19,6 @@ def gen_sample_txt(root_path, sample_ratio):
                         break
 
 if __name__ == '__main__':
-    sample_path = 'E:\\Networks\\Samples'
-    datafile_path = 'E:\\Networks\\Samples\\samples.txt'
+    sample_path = 'E:\\temp\\Samples'
+    datafile_path = 'E:\\temp\\Samples\\samples.txt'
     gen_sample_txt(sample_path, (0.8, 0.2))

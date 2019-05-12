@@ -100,7 +100,20 @@ def write_weights(file_path, weight_name, weight_value, line_width, decimals_num
         elif weight_name.endswith('bias'):
             write_wc_bias(file_path, weight_name, weight_value, line_width, decimals_num, cover)
 
-
+def write_feature_map(file_path, feature_name, feature_value, line_width, decimals_num, cover=False):
+    file = open(file_path, 'a+') if not cover else open(file_path, 'w')
+    write_segment_line(file, line_width)
+    write_title(file, feature_name, feature_value)
+    if len(feature_value.shape) == 4:
+        for i in range(feature_value.shape[1]):
+            for j in range(feature_value.shape[2]):
+                line_value = feature_value[0, i, j, :]
+                write_one_line(file, line_value, decimals_num)
+            file.write('\n')
+    elif len(feature_value.shape) == 2:
+        line_value = feature_value[0, :]
+        write_one_line(file, line_value, decimals_num)
+        file.write('\n')
 
 
 class ModelExplainer:
@@ -145,4 +158,7 @@ class ModelExplainer:
                           weight_value,
                           self.line_width,
                           self.decimals_num)
+
+    def write_feature_map(self, file_path, feature_name, feature_value, cover=False):
+        write_feature_map(file_path, feature_name, feature_value, self.line_width, self.decimals_num, cover)
 
