@@ -15,8 +15,20 @@ def train_step(model, batched_sample, class_num):
     ont_hot_labels = Variable(torch.zeros(temp_batch_size, class_num).scatter_(1, labels, 1).float().cuda())
     imgs = Variable(imgs)
     pre_labels = model(imgs)
-    loss = criterion(pre_labels, ont_hot_labels)
+    classify_loss = criterion(pre_labels, ont_hot_labels)
+    det_loss = 0
+    det_ratio = 0
+    state_dict = model.state_dict()
+    for weight_name, weight_value in state_dict.items():
+        if weight_name.startswith('conv') and weight_name.endswith('weight'):
+            weight2d = weight_value.view(weight_value.shape[0], -1)
+            muti_weight = weight2d.mm(weight2d.t())
+            if weight_name not in inv_eyes:
+                inv_eyes[weight_name] = (1 - torch.eye(muti_weight.shape[0], muti_weight.shape[1])).cuda()
+            det_loss += torch.sum(torch.abs(muti_weight * inv_eyes[weight_name]))
+            pass
     optimizer.zero_grad()
+    loss = classify_loss + det_loss * det_ratio
     loss.backward()
     optimizer.step()
     return loss
@@ -42,6 +54,7 @@ if __name__ == '__main__':
                                    ToTensor()])
     batch_size = 32
     class_num = 2
+    inv_eyes = {}
     train_dataset = LineDataset(trainset_path, transform=composed)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     test_dataset = LineDataset(testset_path, transform=composed)
@@ -65,6 +78,3 @@ if __name__ == '__main__':
             accuracy = test(model, test_dataloader)
             print('Epoch [{} / {}], accuracy: {:.3f}'
                       .format(epoch + 1, epoch_size, accuracy.item()))
-
-
-
