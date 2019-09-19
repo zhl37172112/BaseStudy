@@ -15,6 +15,7 @@ class Net1(nn.Module):
                                    nn.MaxPool2d(2, 2))
         self.wc1 = nn.Linear(conv2_num, 2)
         self.softmax = nn.Softmax(dim=1)
+        self.inv_eyes = {}
 
     def to_one_dim(self, x):
         return x.view(x.size(0), -1)
@@ -26,3 +27,25 @@ class Net1(nn.Module):
         x = self.wc1(x)
         x = self.softmax(x)
         return x
+
+
+    def det_loss(self, det_ratio=0.001):
+        det_loss = 0
+        det_losses = []
+        count = 0
+        for weight_name, weight_value in self.named_parameters():
+            if count == 0:
+                count += 1
+                continue
+            if weight_name.startswith('conv') and weight_name.endswith('weight'):
+                weight2d = weight_value.view(weight_value.shape[0], -1)
+                weight_norm = torch.unsqueeze(torch.norm(weight2d, dim=1), 0)
+                weight_norm_muti = weight_norm.t().mm(weight_norm)
+                muti_weight = weight2d.mm(weight2d.t())
+                if weight_name not in self.inv_eyes:
+                    self.inv_eyes[weight_name] = (1 - torch.eye(muti_weight.shape[0], muti_weight.shape[1])).cuda()
+                curr_det_loss = torch.sum(torch.abs(muti_weight * self.inv_eyes[weight_name] / weight_norm_muti)) *\
+                    det_ratio / weight_value.shape[0]
+                det_loss += curr_det_loss
+                det_losses.append(curr_det_loss)
+        return det_loss, det_losses

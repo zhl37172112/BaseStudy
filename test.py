@@ -9,7 +9,9 @@ from Visualization import ModelExplainer
 
 if __name__ == '__main__':
     dataset_file_path = 'samples_1.txt'
-    ckpt_path = './check_point/base_model_100.pth'
+    ckpt_path = './saved_model/det_0.pth'
+    weight_path = 'weight.txt'
+    feature_path = 'feature.txt'
     composed = transforms.Compose([Normalize(),
                                    ToTensor()])
     batch_size = 32
@@ -19,10 +21,13 @@ if __name__ == '__main__':
     model.eval()
     model_explainer = ModelExplainer()
     state_dict = model.state_dict()
-    model_explainer.write_weights('conv.txt', state_dict)
-    feature_path = 'feature.txt'
-    for sample in test_dataset:
+    model_explainer.write_weights(weight_path, state_dict)
+    for i, sample in enumerate(test_dataset):
+        if i < 20:
+            continue
         img = sample['image']
+        # noise = (torch.rand_like(img) - 0.5) * 0.01
+        # img = img + noise
         img = torch.unsqueeze(img, 0).cuda()
         model_explainer.write_feature_map(feature_path, 'input', img, cover=True)
         conv1_feature = model.conv1(img)
@@ -37,5 +42,5 @@ if __name__ == '__main__':
         model_explainer.write_feature_map(feature_path, 'softmax', softmax_feature.cpu().detach().numpy())
         label = sample['label']
         pre_label = torch.argmax(model(img), 1)
-        print('label: {}, prediction: {}'.format(label.item(), pre_label.item()))
+        print('No.{} label: {}, prediction: {}'.format(i, label.item(), pre_label.item()))
         pass

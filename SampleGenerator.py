@@ -48,8 +48,13 @@ class SampleGenerator:
             img_path = os.path.join(save_dir, str(i) + '.jpg')
             cv2.imwrite(img_path, img)
 
+    def generate_letter_samples(self, letters):
+        fonts = [cv2.FONT_HERSHEY_COMPLEX, cv2.FONT_HERSHEY_DUPLEX, cv2.FONT_HERSHEY_PLAIN,
+                 cv2.FONT_HERSHEY_SCRIPT_COMPLEX]
+
+
 if __name__ == '__main__':
-    img_path = 'E:\\temp\\Samples'
+    img_path = 'E:\\Networks\\Samples'
     img_size = (10, 10)
     img_num = 100
     sample_generator = SampleGenerator(img_path, img_size, img_num)

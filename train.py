@@ -16,27 +16,13 @@ def train_step(model, batched_sample, class_num):
     imgs = Variable(imgs)
     pre_labels = model(imgs)
     classify_loss = criterion(pre_labels, ont_hot_labels)
-    det_loss = 0
-    det_ratio = 0.001
-    # det_ratio = 0
-    for weight_name, weight_value in model.named_parameters():
-        if weight_name.startswith('conv') and weight_name.endswith('weight'):
-            weight2d = weight_value.view(weight_value.shape[0], -1)
-            weight_norm = torch.unsqueeze(torch.norm(weight2d, dim=1), 0)
-            weight_norm_muti = weight_norm.t().mm(weight_norm)
-
-            muti_weight = weight2d.mm(weight2d.t())
-            if weight_name not in inv_eyes:
-                inv_eyes[weight_name] = (1 - torch.eye(muti_weight.shape[0], muti_weight.shape[1])).cuda()
-            det_loss += torch.sum(torch.abs(muti_weight * inv_eyes[weight_name] / weight_norm_muti))
-            pass
-    det_loss = det_loss * det_ratio
+    det_loss, det_losses = model.det_loss(0.01)
     optimizer.zero_grad()
     loss = classify_loss + det_loss
     # loss = det_loss
     loss.backward()
     optimizer.step()
-    return loss, classify_loss, det_loss
+    return loss, classify_loss, det_loss, det_losses
 
 def test(model, data_loader):
     right_num = torch.Tensor([0]).cuda()
@@ -59,6 +45,7 @@ if __name__ == '__main__':
                                    ToTensor()])
     batch_size = 32
     class_num = 2
+    lr = 0.1
     inv_eyes = {}
     train_dataset = LineDataset(trainset_path, transform=composed)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -66,15 +53,19 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     model = Net.Net1().cuda()
     criterion = nn.MSELoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.1)
-    epoch_size = 100
+    optimizer = optim.SGD(model.parameters(), lr, momentum=0.001, dampening=0.001,
+                 weight_decay=0.001, nesterov=False)
+    epoch_size = 200
     for epoch in range(epoch_size):
         for ibatch, batched_sample in enumerate(train_dataloader):
-            loss, classify_loss, det_loss = train_step(model, batched_sample, class_num)
+            loss, classify_loss, det_loss, det_losses = train_step(model, batched_sample, class_num)
             # params = model.state_dict()
             if ibatch % 20 == 0:
                 print('Epoch [{} / {}] Batch [{}], loss: {:.6f}, classify_loss: {:.6f}, det_loss: {:.6f}'
-                      .format(epoch + 1, epoch_size, ibatch, loss.item(), classify_loss.item(), det_loss.item()))
+                      .format(epoch + 1, epoch_size, ibatch, loss.item(), classify_loss.item(), det_loss.item()), end='')
+                for i, curr_det_loss in enumerate(det_losses):
+                    print(' Conv-{}-det_loss: {:.6f}'.format(i, curr_det_loss), end='')
+                print('')
         if (epoch + 1) % 20 == 0:
             if not os.path.isdir(ckpt_dir):
                 os.makedirs(ckpt_dir)
