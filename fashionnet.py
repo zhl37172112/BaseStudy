@@ -4,9 +4,9 @@ from torch import nn
 class Net1(nn.Module):
     def __init__(self):
         super(Net1, self).__init__()
-        conv1_num = 3
-        conv2_num = 6
-        conv3_num = 9
+        conv1_num = 10
+        conv2_num = 18
+        conv3_num = 27
         class_num = 10
         self.conv1 = nn.Sequential(nn.Conv2d(1, conv1_num, 3),
                                    nn.ReLU(),
@@ -17,7 +17,7 @@ class Net1(nn.Module):
         self.conv3 = nn.Sequential(nn.Conv2d(conv2_num, conv3_num, 3),
                                    nn.ReLU(),
                                    nn.MaxPool2d(2, 2))
-        self.wc1 = nn.Linear(conv3_num * 4, 2)
+        self.wc1 = nn.Linear(conv3_num, class_num)
         self.softmax = nn.Softmax(dim=1)
         self.inv_eyes = {}
 

@@ -8,17 +8,14 @@ from torchvision import transforms
 from torch.autograd import Variable
 import os
 
-def train_step(model, batched_sample, class_num):
-    imgs = batched_sample['image'].cuda()
-    labels = batched_sample['label'].long()
-    temp_batch_size = labels.size()[0]
-    ont_hot_labels = Variable(torch.zeros(temp_batch_size, class_num).scatter_(1, labels, 1).float().cuda())
-    imgs = Variable(imgs)
-    pre_labels = model(imgs)
+def train_step(model, batched_sample, batch_target, class_num):
+    batch_sample = batched_sample.cuda()
+    batch_target = batch_target.long()
+    temp_batch_size = batch_target.size()[0]
+    ont_hot_labels = Variable(torch.zeros(temp_batch_size, class_num).scatter_(1, batch_target, 1).float().cuda())
+    batch_sample = Variable(batch_sample)
+    pre_labels = model(batch_sample)
     classify_loss = criterion(pre_labels, ont_hot_labels)
-    det_loss = 0
-    det_ratio = 0.001
-    # det_ratio = 0
     det_losses = []
     for weight_name, weight_value in model.named_parameters():
         if weight_name.startswith('conv') and weight_name.endswith('weight'):
@@ -29,13 +26,7 @@ def train_step(model, batched_sample, class_num):
             muti_weight = weight2d.mm(weight2d.t())
             if weight_name not in inv_eyes:
                 inv_eyes[weight_name] = (1 - torch.eye(muti_weight.shape[0], muti_weight.shape[1])).cuda()
-            curr_det_loss = torch.sum(torch.abs(muti_weight * inv_eyes[weight_name] / weight_norm_muti))
-            det_loss += curr_det_loss
-            det_losses.append(curr_det_loss)
-            pass
-    det_loss = det_loss * det_ratio
     optimizer.zero_grad()
-    # loss = classify_loss + det_loss
     loss = classify_loss
     loss.backward()
     upgrade_optimizer_step(optimizer, loss)
@@ -100,15 +91,16 @@ if __name__ == '__main__':
     optimizer = optim.SGD(model.parameters(), lr=0.1)
     epoch_size = 100
     for epoch in range(epoch_size):
-        for ibatch, batched_sample in enumerate(train_dataloader):
+        for ibatch, batched_sample, batch_target in enumerate(train_dataloader):
             loss, classify_loss, det_loss, det_losses = train_step(model, batched_sample, class_num)
             # params = model.state_dict()
             if ibatch % 20 == 0:
                 print('Epoch [{} / {}] Batch [{}], loss: {:.6f}, classify_loss: {:.6f}, det_loss: {:.6f}'
                       .format(epoch + 1, epoch_size, ibatch, loss.item(), classify_loss.item(), det_loss.item()), end='')
-                for i, part_det_loss in enumerate(det_losses):
-                    print(', det_loss_{}: {:.6f}'.format(i, part_det_loss), end='')
-                print()
+            if ibatch % 100 == 0:
+                accuracy = test(model, test_dataloader)
+                print('Epoch [{} / {}] Batch [{}], Accuracy: {}'.
+                      format(epoch + 1, epoch_size, ibatch, accuracy.item()))
         if (epoch + 1) % 20 == 0:
             if not os.path.isdir(ckpt_dir):
                 os.makedirs(ckpt_dir)
