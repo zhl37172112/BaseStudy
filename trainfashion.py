@@ -9,13 +9,29 @@ import torch.nn as nn
 import torch.optim as optim
 import os
 from torch.autograd import Variable
+import torch
+
+
+def auto_gpu(*args):
+    ret_args = []
+    if torch.cuda.is_available():
+        for arg in args:
+            arg = arg.cuda()
+            ret_args.append(arg)
+    else:
+        ret_args = args
+    if len(ret_args) == 1:
+        ret_args = ret_args[0]
+    return ret_args
+
 
 def test(model, data_loader):
-    right_num = torch.Tensor([0]).cuda()
-    all_num = torch.Tensor([0]).cuda()
+    right_num = torch.Tensor([0])
+    all_num = torch.Tensor([0])
+    right_num, all_num = auto_gpu(right_num, all_num)
     for batched_sample in data_loader:
-        imgs = batched_sample[0].cuda()
-        labels = batched_sample[1].long().cuda()
+        imgs = auto_gpu(batched_sample[0])
+        labels = auto_gpu(batched_sample[1].long())
         pred_lables = model(imgs)
         pred_lables = torch.argmax(pred_lables, 1, keepdim=True)
         right_num += (pred_lables.squeeze(1) == labels).sum()
@@ -23,11 +39,12 @@ def test(model, data_loader):
     accuracy = (right_num / all_num).cpu()
     return accuracy
 
+
 def train_step(model, optimizer, criterion, batched_sample, batched_target, class_num):
-    imgs = batched_sample.cuda()
+    imgs = auto_gpu(batched_sample)
     labels = batched_target.long().unsqueeze(1)
     temp_batch_size = labels.size()[0]
-    ont_hot_labels = Variable(torch.zeros(temp_batch_size, class_num).scatter_(1, labels, 1).float().cuda())
+    ont_hot_labels = Variable(auto_gpu(torch.zeros(temp_batch_size, class_num).scatter_(1, labels, 1).float()))
     imgs = Variable(imgs)
     pre_labels = model(imgs)
     classify_loss = criterion(pre_labels, ont_hot_labels)
@@ -37,21 +54,22 @@ def train_step(model, optimizer, criterion, batched_sample, batched_target, clas
     optimizer.step()
     return loss, classify_loss
 
+
 def main():
-    data_root = 'E:\\Data\\fashionmnist'
+    data_root = 'd:/zhaolin/temp/data'
     ckpt_dir = './fashion_ckpt'
-    labelmap = {0:'T-shirt', 1:'Trouser', 2:'Pullover', 3:'Dress', 4:'Coat', 5:'Sandal',
-                6:'Shirt', 7:'Sneaker', 8:'Bag', 9:'Ankle boot'}
+    labelmap = {0: 'T-shirt', 1: 'Trouser', 2: 'Pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal',
+                6: 'Shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Ankle boot'}
     batch_size = 32
     class_num = 10
     lr = 0.01
     composed = transforms.Compose([Normalize(),
                                    ToTensor()])
-    train_dataset = FashionMNIST(root=data_root, transform=composed)
-    test_dataset = FashionMNIST(root=data_root, transform=composed, train=False)
+    train_dataset = FashionMNIST(root=data_root, transform=composed, download=True)
+    test_dataset = FashionMNIST(root=data_root, transform=composed, train=False, download=True)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
-    model = Net1().cuda()
+    model = auto_gpu(Net1())
     criterion = nn.MSELoss()
     optimizer = optim.SGD(model.parameters(), lr=lr)
     epoch_size = 100
@@ -74,9 +92,8 @@ def main():
             torch.save(model, model_path)
             accuracy = test(model, test_dataloader)
             print('Epoch [{} / {}], accuracy: {:.3f}'
-                      .format(epoch + 1, epoch_size, accuracy.item()))
+                  .format(epoch + 1, epoch_size, accuracy.item()))
 
 
 if __name__ == '__main__':
     main()
-
