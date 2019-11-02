@@ -10,6 +10,8 @@ import torch.optim as optim
 import os
 from torch.autograd import Variable
 import torch
+from torch.utils.tensorboard import SummaryWriter
+import time
 
 
 def auto_gpu(*args):
@@ -65,26 +67,36 @@ def main():
     lr = 0.01
     composed = transforms.Compose([Normalize(),
                                    ToTensor()])
-    train_dataset = FashionMNIST(root=data_root, transform=composed, download=True)
-    test_dataset = FashionMNIST(root=data_root, transform=composed, train=False, download=True)
+    train_dataset = FashionMNIST(root=data_root, transform=composed)
+    test_dataset = FashionMNIST(root=data_root, transform=composed, train=False)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
     model = auto_gpu(Net1())
     criterion = nn.MSELoss()
     optimizer = optim.SGD(model.parameters(), lr=lr)
     epoch_size = 100
+    #summary
+    writer = SummaryWriter('log/fashion_log')
+    running_loss = 0
+    log_step = 20
     for epoch in range(epoch_size):
         for ibatch, batched_sample_label in enumerate(train_dataloader):
             batched_sample = batched_sample_label[0]
             batched_target = batched_sample_label[1]
             loss, classify_loss = train_step(model, optimizer, criterion, batched_sample, batched_target, class_num)
-            if ibatch % 20 == 0:
-                print('Epoch [{} / {}] Batch [{}], loss: {:.6f}, classify_loss: {:.6f}'
-                      .format(epoch + 1, epoch_size, ibatch, loss.item(), classify_loss.item()))
+            running_loss += loss.item()
+            if ibatch % log_step == 0:
+                curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
+                print('{}: Epoch [{} / {}] Batch [{}], loss: {:.6f}, classify_loss: {:.6f}'
+                      .format(curr_time, epoch + 1, epoch_size, ibatch, loss.item(), classify_loss.item()))
+                writer.add_scalar('loss', running_loss / log_step, epoch * len(train_dataset) + ibatch)
+                running_loss = 0
             if ibatch % 100 == 0:
                 accuracy = test(model, test_dataloader)
-                print('Epoch [{} / {}] Batch [{}], Accuracy: {}'.
-                      format(epoch + 1, epoch_size, ibatch, accuracy.item()))
+                curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
+                print('{}: Epoch [{} / {}] Batch [{}], Accuracy: {}'.
+                      format(curr_time, epoch + 1, epoch_size, ibatch, accuracy.item()))
+                writer.add_scalar('accuracy', accuracy, epoch * len(train_dataset) + ibatch)
         if (epoch + 1) % 20 == 0:
             if not os.path.isdir(ckpt_dir):
                 os.makedirs(ckpt_dir)
