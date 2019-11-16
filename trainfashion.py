@@ -4,7 +4,7 @@ import cv2
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from fashionmnist import *
-from fashionnet import Net1
+from fashionnet import Net1, FixedNet
 import torch.nn as nn
 import torch.optim as optim
 import os
@@ -12,19 +12,7 @@ from torch.autograd import Variable
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import time
-
-
-def auto_gpu(*args):
-    ret_args = []
-    if torch.cuda.is_available():
-        for arg in args:
-            arg = arg.cuda()
-            ret_args.append(arg)
-    else:
-        ret_args = args
-    if len(ret_args) == 1:
-        ret_args = ret_args[0]
-    return ret_args
+from auto_gpu import auto_gpu
 
 
 def test(model, data_loader):
@@ -61,30 +49,33 @@ def train_step(model, optimizer, criterion, batched_sample, batched_target, clas
 
 def main():
     data_root = 'E:\\Data\\fashionmnist'
-    ckpt_dir = './fashion_ckpt'
+    ckpt_dir = './fashion_ckpt_fixed'
     labelmap = {0: 'T-shirt', 1: 'Trouser', 2: 'Pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal',
                 6: 'Shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Ankle boot'}
     class_num = 10
     #train params
     batch_size = 128
-    lr = 0.1
+    lr = 1
     epoch_size = 60
     save_every_epoch = 10
+    # summary params
+    log_dir = 'log/fashion_log_cross_entropy_1'
+    running_loss = 0
+    log_step = 20
+
     composed = transforms.Compose([Normalize(),
                                    ToTensor()])
     train_dataset = FashionMNIST(root=data_root, transform=composed)
     test_dataset = FashionMNIST(root=data_root, transform=composed, train=False)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
-    model = auto_gpu(Net1())
+    model = auto_gpu(FixedNet())
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr)
     T_max = int(len(train_dataset) / batch_size) * epoch_size
     schedule = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max)
-    #summary
-    writer = SummaryWriter('log/fashion_log_cross_entropy')
-    running_loss = 0
-    log_step = 20
+    writer = SummaryWriter(log_dir)
+
 
     for epoch in range(epoch_size):
         for ibatch, batched_sample_label in enumerate(train_dataloader):

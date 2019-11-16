@@ -20,6 +20,9 @@ if __name__ == '__main__':
     model = torch.load(ckpt_path)
     model.eval()
     model_explainer = ModelExplainer()
+    for param in model.parameters():
+        param = torch.zeros_like(param)
+        pass
     state_dict = model.state_dict()
     model_explainer.write_weights(weight_path, state_dict)
     for i, sample in enumerate(test_dataset):
@@ -31,7 +34,7 @@ if __name__ == '__main__':
         img = torch.unsqueeze(img, 0).cuda()
         model_explainer.write_feature_map(feature_path, 'input', img, cover=True)
         conv1_feature = model.conv1(img)
-        model_explainer.write_feature_map(feature_path, 'conv1', conv1_feature.cpu().detach().numpy())
+        model_explainer.write_feature_map(feature_path, 'filters1', conv1_feature.cpu().detach().numpy())
         conv2_feature = model.conv2(conv1_feature)
         model_explainer.write_feature_map(feature_path, 'conv2', conv2_feature.cpu().detach().numpy())
         conv2_feature = conv2_feature.view(conv2_feature.size(0), -1)
