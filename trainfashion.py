@@ -4,7 +4,7 @@ import cv2
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from fashionmnist import *
-from fashionnet import Net1, FixedNet
+from fashionnet import Net1, FixedNet, Net1_activate
 import torch.nn as nn
 import torch.optim as optim
 import os
@@ -49,18 +49,17 @@ def train_step(model, optimizer, criterion, batched_sample, batched_target, clas
 
 def main():
     data_root = 'E:\\Data\\fashionmnist'
-    ckpt_dir = './fashion_ckpt_fixed'
+    ckpt_dir = './fashion_ckpt_activate'
     labelmap = {0: 'T-shirt', 1: 'Trouser', 2: 'Pullover', 3: 'Dress', 4: 'Coat', 5: 'Sandal',
                 6: 'Shirt', 7: 'Sneaker', 8: 'Bag', 9: 'Ankle boot'}
     class_num = 10
     #train params
     batch_size = 128
-    lr = 1
+    lr = .1
     epoch_size = 60
     save_every_epoch = 10
     # summary params
-    log_dir = 'log/fashion_log_cross_entropy_1'
-    running_loss = 0
+    log_dir = 'log/activate_1'
     log_step = 20
 
     composed = transforms.Compose([Normalize(),
@@ -69,14 +68,16 @@ def main():
     test_dataset = FashionMNIST(root=data_root, transform=composed, train=False)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
-    model = auto_gpu(FixedNet())
+    # model = auto_gpu(FixedNet())
+    # model = auto_gpu(Net1())
+    model = auto_gpu(Net1_activate())
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr)
     T_max = int(len(train_dataset) / batch_size) * epoch_size
     schedule = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max)
     writer = SummaryWriter(log_dir)
-
-
+    train_first_conv = True
+    last_acc = 0
     for epoch in range(epoch_size):
         for ibatch, batched_sample_label in enumerate(train_dataloader):
             batched_sample = batched_sample_label[0]
@@ -84,16 +85,19 @@ def main():
             loss, classify_loss = train_step(model, optimizer, criterion, batched_sample, batched_target, class_num)
             schedule.step()
             curr_learning_rate = schedule.get_lr()[0]
-            running_loss += loss.item()
             if ibatch % log_step == 0:
                 curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
                 print('{}: Epoch [{} / {}] Batch [{}], loss: {:.6f}, classify_loss: {:.6f}'
                       .format(curr_time, epoch + 1, epoch_size, ibatch, loss.item(), classify_loss.item()))
-                writer.add_scalar('loss', running_loss / log_step, epoch * len(train_dataset) + ibatch)
+                writer.add_scalar('loss', loss.item(), epoch * len(train_dataset) + ibatch)
                 writer.add_scalar('learning  rate', curr_learning_rate, epoch * len(train_dataset) + ibatch)
-                running_loss = 0
             if ibatch % 100 == 0:
                 accuracy = test(model, test_dataloader)
+                if not train_first_conv and accuracy.item() - last_acc < 0.05:
+                    print('****************************** unfixed ***************************')
+                    train_first_conv = True
+                    model.filters1.requires_grad_(True)
+                last_acc = accuracy.item()
                 curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
                 print('{}: Epoch [{} / {}] Batch [{}], Accuracy: {}'.
                       format(curr_time, epoch + 1, epoch_size, ibatch, accuracy.item()))
@@ -102,7 +106,7 @@ def main():
             if not os.path.isdir(ckpt_dir):
                 os.makedirs(ckpt_dir)
             model_path = os.path.join(ckpt_dir, 'base_model_{}.pth'.format(epoch + 1))
-            torch.save(model, model_path)
+            torch.save(model.state_dict(), model_path)
             accuracy = test(model, test_dataloader)
             print('Epoch [{} / {}], accuracy: {:.3f}'
                   .format(epoch + 1, epoch_size, accuracy.item()))

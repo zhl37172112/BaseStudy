@@ -6,7 +6,6 @@ from torchvision import transforms
 from torch.autograd import Variable
 import os
 from Visualization import ModelExplainer
-
 if __name__ == '__main__':
     dataset_file_path = 'samples_1.txt'
     ckpt_path = './saved_model/det_0.pth'
