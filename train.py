@@ -1,5 +1,5 @@
-import Net
-from LineDataset import *
+import net
+from line_dataset import *
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     test_dataset = LineDataset(testset_path, transform=composed)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    model = Net.Net1().cuda()
+    model = net.Net1().cuda()
     criterion = nn.MSELoss()
     optimizer = optim.SGD(model.parameters(), lr=0.1)
     epoch_size = 100

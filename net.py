@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
+
 
 class Net1(nn.Module):
     def __init__(self):
@@ -49,3 +49,42 @@ class Net1(nn.Module):
                 det_loss += curr_det_loss
                 det_losses.append(curr_det_loss)
         return det_loss, det_losses
+
+
+class DogCatNet(nn.Module):
+    def __init__(self):
+        super(DogCatNet, self).__init__()
+        conv1_num = 32
+        conv2_num = 64
+        conv3_num = 64
+        conv4_num = 128
+        conv5_num = 32
+        class_num = 2
+        self.conv1 = nn.Sequential(nn.Conv2d(3, conv1_num, 3),
+                                   nn.ReLU6(),
+                                   nn.MaxPool2d(2, 2))
+        self.conv2 = nn.Sequential(nn.Conv2d(conv1_num, conv2_num, 3),
+                                   nn.ReLU6(),
+                                   nn.MaxPool2d(2, 2))
+        self.conv3 = nn.Sequential(nn.Conv2d(conv2_num, conv3_num, 3),
+                                   nn.ReLU6(),
+                                   nn.MaxPool2d(2, 2))
+        self.conv4 = nn.Sequential(nn.Conv2d(conv3_num, conv4_num, 3),
+                                   nn.ReLU6(),
+                                   nn.MaxPool2d(2, 2))
+        self.conv5 = nn.Sequential(nn.Conv2d(conv4_num, conv5_num, 3),
+                                   nn.ReLU6(),
+                                   nn.MaxPool2d(2, 2))
+        self.wc1 = nn.Linear(128, class_num)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.conv5(x)
+        x = x.reshape([x.shape[0], -1])
+        x = self.wc1(x)
+        # x = self.softmax(x)
+        return x

@@ -1,5 +1,5 @@
-import Net
-from LineDataset import *
+import net
+from line_dataset import *
 from torch.utils.data import DataLoader
 from train import test
 from torchvision import transforms
