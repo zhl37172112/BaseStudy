@@ -4,6 +4,8 @@ import numpy as np
 import torch
 import os
 import random
+from PIL import Image
+from torchvision import transforms as tfs
 
 class DogCatDataset(Dataset):
     def __init__(self, data_dir, transform=None, size=(214, 214)):
@@ -11,7 +13,6 @@ class DogCatDataset(Dataset):
         self.size = size
         self.load_datafile(data_dir)
         self.transform = transform
-
 
     def load_datafile(self, data_dir):
         cat_dir = os.path.join(data_dir, 'cats')
@@ -31,9 +32,7 @@ class DogCatDataset(Dataset):
         img_path = self.imgpath_label[item][0]
         img_label = np.array([(self.imgpath_label[item][1])], np.int32)
         img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), -1)
-        img = cv2.resize(img, self.size)
-        img = img.astype(np.float32)
-        sample = {'image':img, 'label':img_label}
+        sample = {'image': img, 'label': img_label}
         if self.transform:
             sample['image'] = self.transform(sample['image'])
         return sample
@@ -50,7 +49,29 @@ class Normalize(object):
         sample = sample / self.std
         return sample
 
+
 class ToTensor(object):
     def __call__(self, sample):
         sample = np.transpose(sample, [2, 0, 1])
         return torch.from_numpy(sample)
+
+class Resize(object):
+    def __init__(self,size):
+        self.size = size
+    def __call__(self, sample):
+        sample = cv2.resize(sample,self.size)
+        return sample
+
+class DataAug(object):
+    def __call__(self, sample):
+        im_aug = tfs.Compose([
+            tfs.RandomHorizontalFlip(),
+            # tfs.RandomResizedCrop((128,128))
+        ])
+
+        sample = Image.fromarray(cv2.cvtColor(sample, cv2.COLOR_BGR2RGB))
+        sample = im_aug(sample)
+        sample = cv2.cvtColor(np.asarray(sample), cv2.COLOR_RGB2BGR)
+        return sample
+
+
