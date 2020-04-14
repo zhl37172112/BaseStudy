@@ -50,7 +50,7 @@ class ClassifyTrainer:
             self.test_dataloader = DataLoader(self.test_dataset,
                                            batch_size=self.batch_size,
                                            shuffle=False)
-        self.optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.SGD(self.model.parameters(),momentum=0.9, lr=self.learning_rate)
         T_max = int(len(self.train_dataset) / self.batch_size) * self.epoch_size
         self.schedule = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max)
 

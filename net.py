@@ -58,30 +58,36 @@ class DogCatNet(nn.Module):
         conv2_num = 64
         conv3_num = 64
         conv4_num = 128
-        conv5_num = 32
+        conv5_num = 64
+        conv6_num = 32
         class_num = 2
 
 
         self.conv1 = nn.Sequential(nn.Conv2d(3, conv1_num, 3),
-                                   nn.ReLU6(),
                                    nn.BatchNorm2d(conv1_num),
+                                   nn.ReLU6(),
                                    nn.MaxPool2d(2, 2))
         self.conv2 = nn.Sequential(nn.Conv2d(conv1_num, conv2_num, 3),
-                                   nn.ReLU6(),
                                    nn.BatchNorm2d(conv2_num),
+                                   nn.ReLU6(),
                                    nn.MaxPool2d(2, 2))
         self.conv3 = nn.Sequential(nn.Conv2d(conv2_num, conv3_num, 3),
-                                   nn.ReLU6(),
                                    nn.BatchNorm2d(conv3_num),
+                                   nn.ReLU6(),
                                    nn.MaxPool2d(2, 2))
         self.conv4 = nn.Sequential(nn.Conv2d(conv3_num, conv4_num, 3),
-                                   nn.ReLU6(),
                                    nn.BatchNorm2d(conv4_num),
+                                   nn.ReLU6(),
                                    nn.MaxPool2d(2, 2))
         self.conv5 = nn.Sequential(nn.Conv2d(conv4_num, conv5_num, 3),
-                                   nn.ReLU6(),
                                    nn.BatchNorm2d(conv5_num),
+                                   nn.ReLU6(),
                                    nn.MaxPool2d(2, 2))
+        self.conv6 = nn.Sequential(nn.Conv2d(conv5_num, conv6_num, 3),
+                                   nn.BatchNorm2d(conv6_num),
+                                   nn.ReLU6(),
+                                   nn.MaxPool2d(2, 2))
+
         self.wc1 = nn.Linear(128, class_num)
         self.softmax = nn.Softmax(dim=1)
 
@@ -91,7 +97,24 @@ class DogCatNet(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
+        x = self.conv6(x)
         x = x.reshape([x.shape[0], -1])
         x = self.wc1(x)
         x = self.softmax(x)
         return x
+
+    def get_feature_maps(self, x):
+        feature_maps = []
+        x = self.conv1(x)
+        feature_maps.append(x)
+        x = self.conv2(x)
+        feature_maps.append(x)
+        x = self.conv3(x)
+        feature_maps.append(x)
+        x = self.conv4(x)
+        feature_maps.append(x)
+        x = self.conv5(x)
+        feature_maps.append(x)
+        x = self.conv6(x)
+        feature_maps.append(x)
+        return feature_maps
